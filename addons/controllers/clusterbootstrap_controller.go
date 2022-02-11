@@ -132,7 +132,8 @@ func (r *ClusterBootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		return ctrl.Result{}, err
 	}
 
-	tkrName := util.GetTKRNameForCluster(r.context, r.Client, cluster)
+	// TODO: What about those classy clusters that aren't labeled with any TKR related labels?
+	tkrName := util.GetTKRNameForCluster(r.context, r.Client, cluster, constants.TKRLabelClassyClusters)
 	if tkrName == "" {
 		log.Info("cluster does not have an associated TKR")
 		return ctrl.Result{}, nil
@@ -196,7 +197,8 @@ func (r *ClusterBootstrapReconciler) reconcileNormal(cluster *clusterapiv1beta1.
 func (r *ClusterBootstrapReconciler) createOrPatchclusterBootstrapFromTemplate(cluster *clusterapiv1beta1.Cluster,
 	log logr.Logger) (*runtanzuv1alpha3.ClusterBootstrap, error) {
 
-	tkrName := util.GetTKRNameForCluster(r.context, r.Client, cluster)
+	// TODO: What about those classy clusters that aren't labeled with any TKR related labels?
+	tkrName := util.GetTKRNameForCluster(r.context, r.Client, cluster, constants.TKRLabelClassyClusters)
 	if tkrName == "" {
 		log.Info("cluster does not have an associated TKR")
 		return nil, nil

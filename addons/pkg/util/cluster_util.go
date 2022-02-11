@@ -107,37 +107,26 @@ func GetClusterClient(ctx context.Context, currentClusterClient client.Client, s
 	return c, nil
 }
 
-// GetTKRForCluster gets the TKR for cluster
-func GetTKRForCluster(ctx context.Context, c client.Client, cluster *clusterv1beta1.Cluster) (*runtanzuv1alpha1.TanzuKubernetesRelease, error) {
-	if c == nil || cluster == nil {
-		return nil, nil
-	}
-
-	tkrName := GetTKRNameForCluster(ctx, c, cluster)
-	if tkrName == "" {
-		return nil, nil
-	}
-
-	tkr, err := GetTKRByName(ctx, c, tkrName)
-	if err != nil {
-		return nil, err
-	}
-
-	return tkr, nil
-}
-
-// GetTKRNameForCluster get the TKR name for the cluster
-func GetTKRNameForCluster(ctx context.Context, c client.Client, cluster *clusterv1beta1.Cluster) string {
+// GetTKRNameForCluster get the TKR name for the cluster. The tkrLabel argument determines the key of the TKR label
+// only "legacy-style" TKGm clusters have "tanzuKubernetesRelease" label for the TKR, whereas "classy" UTKG
+// clusters have "run.tanzu.vmware.com/tkr" label for the TKR, or not labeled with any TKR-related labels
+func GetTKRNameForCluster(ctx context.Context, c client.Client, cluster *clusterv1beta1.Cluster, tkrLabel string) string {
 	if c == nil || cluster == nil {
 		return ""
 	}
 
-	return cluster.Labels[constants.TKRLabel]
+	for k, v := range cluster.Labels {
+		if k == tkrLabel {
+			return v
+		}
+	}
+
+	return ""
 }
 
-// GetBOMForCluster gets the bom associated with the cluster
+// GetBOMForCluster gets the bom associated with the legacy-style TKGm cluster
 func GetBOMForCluster(ctx context.Context, c client.Client, cluster *clusterv1beta1.Cluster) (*bomtypes.Bom, error) {
-	tkrName := GetTKRNameForCluster(ctx, c, cluster)
+	tkrName := GetTKRNameForCluster(ctx, c, cluster, constants.TKRLabel)
 	if tkrName == "" {
 		return nil, nil
 	}

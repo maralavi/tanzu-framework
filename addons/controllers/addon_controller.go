@@ -115,7 +115,19 @@ func (r *AddonReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ct
 		return ctrl.Result{}, err
 	}
 
-	tkrName := util.GetTKRNameForCluster(ctx, r.Client, cluster)
+	// "classy" UTKG clusters have "run.tanzu.vmware.com/tkr" label or
+	// are not labeled with any TKR related labels
+	// (in case of not having run.tanzu.vmware.com/resolve-tkr annotation).
+	// These clusters need to get reconciled by the cluster bootstrap controller.
+	// only legacy-style clusters are labeled with "tanzuKubernetesRelease"
+	// and should be reconciled by the addons controller.
+	for k, _ := range cluster.Labels {
+		if k == "run.tanzu.vmware.com/tkr" {
+			return ctrl.Result{}, nil
+		}
+	}
+
+	tkrName := util.GetTKRNameForCluster(ctx, r.Client, cluster, constants.TKRLabel)
 	if tkrName == "" {
 		log.Info("cluster does not have an associated TKR")
 		return ctrl.Result{}, nil
