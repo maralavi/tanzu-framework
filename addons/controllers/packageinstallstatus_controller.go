@@ -144,7 +144,7 @@ func (r *PackageInstallStatusReconciler) Reconcile(_ context.Context, req reconc
 		return ctrl.Result{}, nil
 	}
 
-	tkr, err := util.GetTKRByName(r.ctx, r.Client, tkrName)
+	tkr, err := util.GetTKRByName(r.ctx, r.Client, tkrName, constants.TKRLabelClassyClusters)
 	if err != nil {
 		return ctrl.Result{}, errors.Wrapf(err, "unable to fetch TKR object '%s'", tkrName)
 	}

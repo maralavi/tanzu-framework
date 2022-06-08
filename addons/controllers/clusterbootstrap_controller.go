@@ -6,6 +6,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -158,7 +159,7 @@ func (r *ClusterBootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		return ctrl.Result{}, nil
 	}
 
-	tkr, err := util.GetTKRByName(r.context, r.Client, tkrName)
+	tkr, err := util.GetTKRByName(r.context, r.Client, tkrName, constants.TKRLabelClassyClusters)
 	if err != nil {
 		log.Error(err, "unable to fetch TKR object", "name", tkrName)
 		return ctrl.Result{}, err
@@ -468,9 +469,15 @@ func (r *ClusterBootstrapReconciler) mergeClusterBootstrapPackagesWithTemplate(
 		log.Info("no CNI package specified in ClusterBootstarp, should not happen. Continue with CNI in ClusterBootstrapTemplate of new TKR")
 		updatedClusterBootstrap.Spec.CNI = clusterBootstrapTemplate.Spec.CNI.DeepCopy()
 	} else {
-		// We don't allow change to the CNI selection once it starts running
+		// We don't allow change to the CNI selection once it starts running, however we allow version bump
+		//TODO: check correctness of the following statement, as we still allow version bump
 		// ClusterBootstrap webhook will make sure the package RefName always match the original CNI
-		updatedClusterBootstrap.Spec.CNI.RefName = clusterBootstrapTemplate.Spec.CNI.RefName
+		updatedCNI, cniNamePrefix, err := r.getCNIFromTKR(updatedClusterBootstrap.Spec.CNI, cluster)
+		if err != nil {
+			errorMsg := fmt.Sprintf("unable to find any CNI bootstrap package prefixed with '%s' for ClusterBootstrap %s/%s in TKR", cniNamePrefix, cluster.Name, cluster.Namespace)
+			return nil, errors.Wrap(err, errorMsg)
+		}
+		updatedClusterBootstrap.Spec.CNI.RefName = updatedCNI
 	}
 
 	if updatedClusterBootstrap.Spec.Kapp == nil {
@@ -1373,4 +1380,39 @@ func (r *ClusterBootstrapReconciler) removeAdditionalPackageInstalls(remoteClien
 		}
 	}
 	return nil
+}
+
+// getCNIFromTKR tries to find the prefix of the provided CNI RefName in the bootstrap packages of the TKR object associated with the cluster. Upon finding
+// the corresponding bootstrap package name, it returns it as the bumped version of the CNI
+func (r *ClusterBootstrapReconciler) getCNIFromTKR(cni *runtanzuv1alpha3.ClusterBootstrapPackage, cluster *clusterapiv1beta1.Cluster) (string, string, error) {
+	cniNamePrefix := cni.RefName
+	cniNameTokens := strings.Split(cni.RefName, ".")
+	if len(cniNameTokens) >= 1 {
+		cniNamePrefix = cniNameTokens[0]
+	}
+
+	// it is expected to have a label corresponding to the TKR name in the cluster object
+	tkrName := util.GetClusterLabel(cluster.Labels, constants.TKRLabelClassyClusters)
+	if tkrName == "" {
+		return "", "", fmt.Errorf("no '%s' label found in the cluster object", constants.TKRLabelClassyClusters)
+	}
+
+	// get TKR object associated with the cluster
+	tkr, err := util.GetTKRByName(r.context, r.Client, tkrName, constants.TKRLabelClassyClusters)
+	if err != nil || tkr == nil {
+		return "", "", fmt.Errorf("unable to fetch TKR object '%s'", tkrName)
+	}
+
+	tkrBootstrapPackages := tkr.(*runtanzuv1alpha3.TanzuKubernetesRelease).Spec.BootstrapPackages //Marjan
+	if tkrBootstrapPackages == nil || len(tkrBootstrapPackages) == 0 {
+		return "", "", errors.New("unable to find any bootstrap packages in the TKR object")
+	}
+
+	for _, bootstrapPackage := range tkrBootstrapPackages {
+		if strings.Contains(bootstrapPackage.Name, cniNamePrefix) {
+			return bootstrapPackage.Name, cniNamePrefix, nil
+		}
+	}
+
+	return "", "", fmt.Errorf("no bootstrap package prefixed with '%s' is found in the TKR object", cniNamePrefix)
 }

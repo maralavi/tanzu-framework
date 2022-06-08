@@ -121,7 +121,7 @@ func (r *AddonReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ct
 		return ctrl.Result{}, nil
 	}
 
-	tkr, err := util.GetTKRByName(ctx, r.Client, tkrName)
+	tkr, err := util.GetTKRByName(ctx, r.Client, tkrName, constants.TKRLabel)
 	if err != nil {
 		log.Error(err, "unable to fetch TKR object", "name", tkrName)
 		return ctrl.Result{}, err

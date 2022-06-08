@@ -25,7 +25,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 
 	"github.com/vmware-tanzu/tanzu-framework/addons/pkg/constants"
-	runtanzuv1alpha1 "github.com/vmware-tanzu/tanzu-framework/apis/run/v1alpha1"
 	tkgconstants "github.com/vmware-tanzu/tanzu-framework/pkg/v1/tkg/constants"
 	bomtypes "github.com/vmware-tanzu/tanzu-framework/pkg/v1/tkr/pkg/types"
 	vmoperatorv1alpha1 "github.com/vmware-tanzu/vm-operator-api/api/v1alpha1"
@@ -68,7 +67,7 @@ func GetClusterByName(ctx context.Context, c client.Client, namespace, name stri
 }
 
 // GetClustersByTKR gets the clusters using this TKR
-func GetClustersByTKR(ctx context.Context, c client.Client, tkr *runtanzuv1alpha1.TanzuKubernetesRelease) ([]*clusterv1beta1.Cluster, error) {
+func GetClustersByTKR(ctx context.Context, c client.Client, tkr client.Object) ([]*clusterv1beta1.Cluster, error) {
 	var clusters []*clusterv1beta1.Cluster
 
 	if c == nil || tkr == nil {
@@ -77,7 +76,7 @@ func GetClustersByTKR(ctx context.Context, c client.Client, tkr *runtanzuv1alpha
 
 	clustersList := &clusterv1beta1.ClusterList{}
 
-	if err := c.List(ctx, clustersList, client.MatchingLabels{constants.TKRLabel: tkr.Name}); err != nil {
+	if err := c.List(ctx, clustersList, client.MatchingLabels{constants.TKRLabel: tkr.GetName()}); err != nil {
 		return nil, err
 	}
 
