@@ -4,7 +4,7 @@
 ---
 namespace: tkg-system
 nodeSelector:
-  node-role.kubernetes.io/master: ""
+  node-role.kubernetes.io/control-plane: ""
 deployment:
   updateStrategy: null
   rollingUpdate:

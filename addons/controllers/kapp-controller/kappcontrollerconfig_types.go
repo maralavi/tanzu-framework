@@ -23,7 +23,7 @@ type kappControllerConfigSpec struct {
 
 // NodeSelector contains the nodeSelector information
 type NodeSelector struct {
-	NodeRoleMaster string `yaml:"node-role.kubernetes.io/master"`
+	NodeRoleControlPlane string `yaml:"node-role.kubernetes.io/control-plane"`
 }
 
 type kappController struct {
@@ -122,7 +122,7 @@ func mapKappControllerConfigSpec(cluster *clusterapiv1beta1.Cluster, config *run
 		configSpec.KappController.Config.DangerousSkipTLSVerify = config.Spec.KappController.Config.DangerousSkipTLSVerify
 	}
 
-	configSpec.NodeSelector = NodeSelector{NodeRoleMaster: ""}
+	configSpec.NodeSelector = NodeSelector{NodeRoleControlPlane: ""}
 
 	return configSpec, nil
 }
